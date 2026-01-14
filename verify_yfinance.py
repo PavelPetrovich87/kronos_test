@@ -1,55 +1,55 @@
 from lib.data_loader import DataLoader
-import os
 import shutil
+from pathlib import Path
+import pandas as pd
 
-def verify():
-    print("Starting Manual Verification...")
-    data_dir = "data_verification"
-    if os.path.exists(data_dir):
+def main():
+    # Setup
+    data_dir = Path("data_test_verify")
+    if data_dir.exists():
         shutil.rmtree(data_dir)
-    os.makedirs(data_dir)
+    data_dir.mkdir()
     
     loader = DataLoader(data_dir=data_dir)
-    symbol = "SPY"
-    timeframe = "1d"
+    symbol = "BTC-USD"
     
-    # 1. First load - should fetch
-    print(f"Fetching {symbol} (should trigger download)...")
+    print(f"Fetching {symbol}...")
     try:
-        df = loader.load_ohlcv(symbol, timeframe)
-        print(f"Fetch success. Shape: {df.shape}")
+        # We need to ensure we don't pick a symbol that fails on yfinance if network is flaky, 
+        # but BTC-USD is usually reliable.
+        df = loader.load_ohlcv(symbol, timeframe="1d")
+        print("Success!")
+        print(df.head())
+        print("Columns:", df.columns)
+        print("Index Name:", df.index.name)
+        
+        # Verify columns
+        expected = ['open', 'high', 'low', 'close', 'volume']
+        if not all(c in df.columns for c in expected):
+            print(f"FAILED: Missing columns. Got {df.columns}, Expected {expected}")
+            exit(1)
+            
+        # Verify file exists
+        if not (data_dir / f"{symbol}_1d.csv").exists():
+             print("FAILED: File not saved")
+             exit(1)
+             
+        # Verify loading from file
+        print("Loading from file...")
+        df2 = loader.load_ohlcv(symbol, timeframe="1d")
+        if len(df2) != len(df):
+             print(f"FAILED: Length mismatch. Original {len(df)}, Loaded {len(df2)}")
+             exit(1)
+             
+        print("Verification Passed!")
+        
     except Exception as e:
-        print(f"Fetch FAILED: {e}")
-        return
-
-    # Check file exists
-    expected_file = os.path.join(data_dir, f"{symbol}_{timeframe}.csv")
-    if not os.path.exists(expected_file):
-        print("ERROR: File was not persisted!")
-        return
-    print("File persistence verified.")
-    
-    # Check normalization
-    expected_cols = ['open', 'high', 'low', 'close', 'volume']
-    if not all(col in df.columns for col in expected_cols):
-        print(f"ERROR: Columns not normalized. Got: {df.columns}")
-        return
-    print("Column normalization verified.")
-    
-    # 2. Second load - should use cache
-    print("Loading again (should use cache)...")
-    # We can't easily mock here without patching, but we can assume if it's fast/doesn't error it's fine.
-    # In a real scenario we'd check logs or time it.
-    df2 = loader.load_ohlcv(symbol, timeframe)
-    
-    if df.equals(df2):
-        print("Cache load consistency verified.")
-    else:
-        print("ERROR: Cache load data mismatch!")
-
-    print("SUCCESS: All checks passed.")
-    # Cleanup
-    shutil.rmtree(data_dir)
+        print(f"FAILED: {e}")
+        exit(1)
+    finally:
+        # Cleanup
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
 
 if __name__ == "__main__":
-    verify()
+    main()

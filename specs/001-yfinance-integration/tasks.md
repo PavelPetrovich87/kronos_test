@@ -11,14 +11,14 @@
 
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
+- - Include exact file paths in descriptions
 
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Update `requirements.txt` to include `yfinance` and `pytest`
-- [ ] T002 Create `tests/` directory structure
+- [x] T001 Update `requirements.txt` to include `yfinance` and `pytest`
+- [x] T002 Create `tests/` directory structure
 
 ---
 
@@ -42,12 +42,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T003 [US1] Create `tests/test_data_loader.py` with mock tests for fetching logic
-- [ ] T004 [US1] Create manual verification script `verify_yfinance.py` for end-to-end testing
+- [x] T003 [US1] Create `tests/test_data_loader.py` with mock tests for fetching logic
+- [x] T004 [US1] Create manual verification script `verify_yfinance.py` for end-to-end testing
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Implement `load_ohlcv` fetching and caching logic in `lib/data_loader.py`
+- [x] T005 [US1] Implement `load_ohlcv` fetching and caching logic in `lib/data_loader.py`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -61,11 +61,11 @@
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T006 [US2] Update `tests/test_data_loader.py` to test column normalization
+- [x] T006 [US2] Update `tests/test_data_loader.py` to test column normalization
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Implement column normalization and DatetimeIndex enforcement in `lib/data_loader.py`
+- [x] T007 [US2] Implement column normalization and DatetimeIndex enforcement in `lib/data_loader.py`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -75,7 +75,7 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T008 Run full verification suite (pytest and manual script)
+- [x] T008 Run full verification suite (pytest and manual script)
 
 ---
 
