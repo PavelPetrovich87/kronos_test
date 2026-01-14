@@ -12,6 +12,9 @@ einops==0.8.1
 huggingface_hub==0.33.1
 safetensors==0.6.2
 
-# Visualization/Utils
 matplotlib
 tqdm
+
+# Testing
+pytest
+yfinance
