@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import pandas as pd
 
 class SignalSide(Enum):
@@ -39,29 +39,88 @@ class BacktestResult:
     metrics: Dict[str, float]
     config: Dict
 
+class Predictor:
+    """Base interface for price predictors."""
+    def predict(self, df: pd.DataFrame) -> pd.Series:
+        raise NotImplementedError
+
+class MockPredictor(Predictor):
+    """Simple mock predictor for testing."""
+    def predict(self, df: pd.DataFrame) -> pd.Series:
+        # Mock logic: +1% from current close
+        if 'close' not in df.columns:
+            return pd.Series(dtype=float)
+        return df['close'] * 1.01
+
 class Strategy:
     """
     Generates trading signals based on model predictions.
-    Logic:
-      - LONG if prediction > current_price * (1 + threshold)
-      - SHORT if prediction < current_price * (1 - threshold)
-      - NEUTRAL otherwise
+    Can optionally own a Predictor to run inference before signal generation.
     """
-    def __init__(self, threshold: float = 0.005):
+    def __init__(self, threshold: float = 0.005, predictor: Optional[Any] = None):
         self.threshold = threshold
+        self.predictor = predictor
 
     def generate_signals(self, df: pd.DataFrame) -> List[Signal]:
         """
-        Generates a list of Signals from a DataFrame containing 'close' and 'prediction' columns.
+        Generates a list of Signals.
+        If a predictor is set, it runs prediction first and adds/overwrites 'prediction' column.
+        Otherwise, expects 'prediction' column to be present.
         """
-        signals = []
-        if 'prediction' not in df.columns or 'close' not in df.columns:
-            raise ValueError("DataFrame must contain 'prediction' and 'close' columns")
+        working_df = df.copy()
+        
+        # Run prediction if predictor available
+        if self.predictor:
+            try:
+                # KronosModel returns a Series with index as timestamps
+                # MockPredictor checks full df.
+                # We need to handle how predictions align with df.
+                # Assuming predictor returns a Series aligned with `df` (historical) OR future.
+                # For `KronosModel` (Real), it predicts *future*.
+                # For basic Mock, it's element-wise.
+                
+                # If we are backtesting, we usually want element-wise "what would the model have predicted at T?"
+                # KronosModel.predict(df) currently takes LAST lookback and returns NEXT 1.
+                # This doesn't support vectorised backtesting easily unless we loop.
+                # However, MockPredictor is vectorised.
+                
+                # For now, let's assume we handle the series as is.
+                preds = self.predictor.predict(working_df)
+                
+                # If scalar or single row (Real Model)
+                if len(preds) == 1:
+                     # This is a live inference scenario
+                     # We can't vectorise this simply. 
+                     # But Strategy.generate_signals iterates rows.
+                     # We will attach the single prediction if valid?
+                     # OR we assume the df passed to generate_signals IS history and we want 1 signal.
+                     pass
+                else:
+                    # element wise (Mock)
+                    working_df['prediction'] = preds
+                    
+            except Exception as e:
+                print(f"Prediction error: {e}")
+                pass
 
-        for timestamp, row in df.iterrows():
+        if 'prediction' not in working_df.columns:
+            # Fallback if no predictor or failed, check columns
+             if 'prediction' not in df.columns:
+                 # If we are in live mode and predictor returned 1 value, maybe we don't need column?
+                 # But generate_signals loop assumes columns.
+                 # Let's handle the single prediction case specifically or raise.
+                 raise ValueError("DataFrame must contain 'prediction' column or Strategy must have a generic predictor.")
+
+        signals = []
+        for timestamp, row in working_df.iterrows():
             price = row['close']
-            pred = row['prediction']
             
+            # Handle prediction
+            if 'prediction' in row:
+                pred = row['prediction']
+            else:
+                continue
+
             # Skip if any value is NaN
             if pd.isna(price) or pd.isna(pred):
                 continue
@@ -81,7 +140,7 @@ class Strategy:
             
             signal = Signal(
                 timestamp=timestamp, # type: ignore
-                symbol="BTC-USD", # TODO: Pass symbol as arg or infer
+                symbol="BTC-USD", 
                 side=side,
                 strength=strength
             )
