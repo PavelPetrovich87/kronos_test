@@ -39,10 +39,10 @@ class KronosModel(Predictor):
             # In Colab, we expect cloning into /content/Kronos
             kronos_path = Path("/content/Kronos")
         else:
-            # Local: Expect sibling directory "../Kronos" relative to this project root
+            # Local: Expect "Kronos" directory INSIDE the project root
             # This file is in lib/kronos_model.py -> project_root is ../
             project_root = Path(__file__).resolve().parent.parent
-            kronos_path = project_root.parent / "Kronos"
+            kronos_path = project_root / "Kronos"
 
         # Allow config override
         if 'kronos_path' in self.config:
@@ -63,11 +63,20 @@ class KronosModel(Predictor):
             print(f"Loading Kronos model: {self.model_name} on {self.device}...")
             self.tokenizer = KronosTokenizer.from_pretrained(self.tokenizer_name)
             self.model = Kronos.from_pretrained(self.model_name)
-            self.model.to(self.device)
+            self.model.eval() # Ensure model is in eval mode
+            # Don't move model here - KronosPredictor will handle device placement
             
-            self.predictor = KronosPredictor(self.model, self.tokenizer, max_context=self.max_context)
-            self.predictor.device = self.device # Ensure predictor uses correct device
-            print("Model loaded successfully.")
+            # Pass device to KronosPredictor so it handles all device placement consistently
+            self.predictor = KronosPredictor(
+                self.model, 
+                self.tokenizer, 
+                device=self.device,  # Explicitly pass device
+                max_context=self.max_context
+            )
+            
+            # Verify model device after predictor initialization
+            param_device = next(self.model.parameters()).device
+            print(f"Model loaded successfully. All components on: {param_device}")
             
         except ImportError as e:
             raise ImportError(f"Could not import Kronos modules. Ensure Kronos repo is at {self.kronos_path}. Error: {e}")

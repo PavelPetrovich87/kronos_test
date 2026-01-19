@@ -1,5 +1,6 @@
 import argparse
 import sys
+import torch
 import pandas as pd
 import os
 from lib.data_loader import DataLoader
@@ -41,7 +42,8 @@ def main():
         config = {
             "type": "real",
             "model_name": "NeoQuasar/Kronos-small",
-            "device": "cpu"
+            # Auto-detect device for verification script
+            "device": "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
         }
     else:
         config = {

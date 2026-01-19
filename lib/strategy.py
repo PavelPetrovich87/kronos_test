@@ -89,14 +89,33 @@ class Strategy:
                 
                 # If scalar or single row (Real Model)
                 if len(preds) == 1:
-                     # This is a live inference scenario
-                     # We can't vectorise this simply. 
-                     # But Strategy.generate_signals iterates rows.
-                     # We will attach the single prediction if valid?
-                     # OR we assume the df passed to generate_signals IS history and we want 1 signal.
-                     pass
+                     # Live inference scenario: Compare LAST price to FUTURE prediction
+                     future_ts = preds.index[0]
+                     pred_price = preds.iloc[0]
+                     last_close = working_df['close'].iloc[-1]
+                     
+                     upper = last_close * (1 + self.threshold)
+                     lower = last_close * (1 - self.threshold)
+                     
+                     side = SignalSide.NEUTRAL
+                     strength = 0.0
+                     
+                     if pred_price > upper:
+                         side = SignalSide.LONG
+                         strength = (pred_price - upper) / last_close
+                     elif pred_price < lower:
+                         side = SignalSide.SHORT
+                         strength = (lower - pred_price) / last_close
+                         
+                     # Generate single signal
+                     return [Signal(
+                         timestamp=future_ts,
+                         symbol="BTC-USD", # TODO: pass symbol in kwargs or infer
+                         side=side,
+                         strength=strength
+                     )]
                 else:
-                    # element wise (Mock)
+                    # element wise (Mock or Backtest)
                     working_df['prediction'] = preds
                     
             except Exception as e:
@@ -106,9 +125,6 @@ class Strategy:
         if 'prediction' not in working_df.columns:
             # Fallback if no predictor or failed, check columns
              if 'prediction' not in df.columns:
-                 # If we are in live mode and predictor returned 1 value, maybe we don't need column?
-                 # But generate_signals loop assumes columns.
-                 # Let's handle the single prediction case specifically or raise.
                  raise ValueError("DataFrame must contain 'prediction' column or Strategy must have a generic predictor.")
 
         signals = []
@@ -138,6 +154,9 @@ class Strategy:
                 side = SignalSide.SHORT
                 strength = (lower_bound - pred) / price
             
+            # Only create signal if not NEUTRAL (optimization)
+            # But legacy code appended all, let's keep consistent? 
+            # Original code appended all even neutral.
             signal = Signal(
                 timestamp=timestamp, # type: ignore
                 symbol="BTC-USD", 
