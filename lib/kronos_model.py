@@ -34,15 +34,23 @@ class KronosModel(Predictor):
 
     def _setup_environment(self):
         """Setup paths to import Kronos repository"""
-        # Determine expected Kronos path
-        if self._is_colab():
-            # In Colab, we expect cloning into /content/Kronos
-            kronos_path = Path("/content/Kronos")
+        # 1. Try Colab absolute path (works even in !python subprocesses)
+        colab_path = Path("/content/Kronos")
+        
+        # 2. Try local locations
+        project_root = Path(__file__).resolve().parent.parent
+        inside_path = project_root / "Kronos"
+        sibling_path = project_root.parent / "Kronos"
+
+        if colab_path.exists():
+            kronos_path = colab_path
+            print("Environment: Colab detected (via path)")
+        elif inside_path.exists():
+            kronos_path = inside_path
+            print("Environment: Local (nested) detected")
         else:
-            # Local: Expect "Kronos" directory INSIDE the project root
-            # This file is in lib/kronos_model.py -> project_root is ../
-            project_root = Path(__file__).resolve().parent.parent
-            kronos_path = project_root / "Kronos"
+            kronos_path = sibling_path
+            print("Environment: Local (sibling) or fallback")
 
         # Allow config override
         if 'kronos_path' in self.config:
