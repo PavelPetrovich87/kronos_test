@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
-from typing import Dict
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any
 
 class PerformanceMetrics:
     """Calculates risk and performance metrics for backtest results."""
@@ -35,3 +38,26 @@ class PerformanceMetrics:
             "max_drawdown": PerformanceMetrics.calculate_max_drawdown(equity_curve),
             "total_return": float((equity_curve.iloc[-1] / equity_curve.iloc[0]) - 1) if not equity_curve.empty else 0.0
         }
+
+class ExperimentLogger:
+    """Logs experiment results to JSON files."""
+    def __init__(self, results_dir: str = "results"):
+        self.results_dir = Path(results_dir)
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+
+    def log(self, config: Dict[str, Any], metrics: Dict[str, float]) -> Path:
+        """Saves experiment results as a JSON file."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_data = {
+            "timestamp": datetime.now().isoformat(),
+            "config": config,
+            "metrics": metrics
+        }
+        
+        filename = f"{timestamp}_run.json"
+        filepath = self.results_dir / filename
+        
+        with open(filepath, 'w') as f:
+            json.dump(log_data, f, indent=4)
+        
+        return filepath

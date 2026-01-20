@@ -11,8 +11,18 @@ class DataLoader:
     
     def __init__(self, data_dir: Union[str, Path] = "data"):
         self.data_dir = Path(data_dir)
-        
-    def load_ohlcv(self, symbol: str, timeframe: str = "1h") -> pd.DataFrame:
+
+    def filter_data(self, df: pd.DataFrame, start_date: Optional[Union[str, pd.Timestamp]] = None, end_date: Optional[Union[str, pd.Timestamp]] = None) -> pd.DataFrame:
+        """
+        Filter DataFrame by date range.
+        """
+        if start_date:
+            df = df[df.index >= pd.to_datetime(start_date)]
+        if end_date:
+            df = df[df.index <= pd.to_datetime(end_date)]
+        return df
+
+    def load_ohlcv(self, symbol: str, timeframe: str = "1h", start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
         """
         Load OHLCV data for a specific symbol.
         
@@ -61,24 +71,14 @@ class DataLoader:
                 self.save_raw(df, symbol, timeframe)
                 
             except Exception as e:
-                # If save_raw fails or yfinance fails
                 if isinstance(e, FileNotFoundError):
                     raise
                 print(f"Error fetching data: {e}")
-                # For FR-006 we should raise meaningful exceptions
                 raise
 
         # Now load from file
-        print(f"Loading data from {file_path}")
         df = pd.read_csv(file_path, parse_dates=['timestamp'], index_col='timestamp')
-        
-        # Ensure standard column names
-        required_cols = ['open', 'high', 'low', 'close', 'volume']
-        if not all(col in df.columns for col in required_cols):
-             # Handle header mapping if necessary
-             pass
-             
-        return df
+        return self.filter_data(df, start_date, end_date)
 
     def save_raw(self, df: pd.DataFrame, symbol: str, timeframe: str) -> Path:
         """

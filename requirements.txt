@@ -15,6 +15,10 @@ safetensors==0.6.2
 matplotlib
 tqdm
 
+# Visualization & Widgets
+plotly
+ipywidgets
+
 # Testing
 pytest
 yfinance
