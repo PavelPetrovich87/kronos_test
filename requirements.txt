@@ -1,7 +1,7 @@
 # Kronos Project Requirements
 
 # Core
-numpy<2
+numpy
 pandas>=2.0.0
 torch>=2.0.0
 
